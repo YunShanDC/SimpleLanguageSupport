@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+  <LanguageSupport>
+    <Language name="中文(简体)" abbreviation="zh-cn"/>
+    <Language name="English(US)" abbreviation="en-us"/>  
+  </LanguageSupport>
+
+  <Settings>
+    <Default language="zh-cn"/>
+  </Settings>
+  
+  <ItemDetails>
+    
+    <ItemList language="zh-cn">
+      <Controls>
+        <Item id="Button1" content="按钮1"/>
+      </Controls>
+      <Messages>
+        <Item id="Message_ErrorInfo" content="出错了"/>
+      </Messages>
+    </ItemList>
+    
+    <ItemList language="en-us">
+      <Controls>
+        <Item id="Button1" content="Button1"/>
+      </Controls>
+      <Messages>
+        <Item id="Message_ErrorInfo" content="Error!"/>
+      </Messages>
+    </ItemList>
+    
+  </ItemDetails>
+
+</Root>
