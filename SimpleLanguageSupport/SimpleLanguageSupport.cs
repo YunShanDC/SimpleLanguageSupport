@@ -66,6 +66,16 @@ namespace SimpleLanguageSupport
         }
     }
 
+    public class LanguageSupportDic : Dictionary<string, LanguageInfo>
+    {
+
+    }
+
+    public class ItemDic : Dictionary<string, ItemInfo>
+    {
+
+    }
+
     public class ItemInfo : ICloneable
     {
         public string ID { get; private set; }
@@ -97,11 +107,11 @@ namespace SimpleLanguageSupport
 
     public static class ProgramLanguageHelp
     {
-        private static Dictionary<string, LanguageInfo> SupportList;
-        private static Dictionary<string, Dictionary<string, ItemInfo>> ItemListCollection;
+        private static LanguageSupportDic SupportList;
+        private static Dictionary<string, ItemDic> ItemDicCollection;
 
         private static LanguageInfo LanguageDefault;
-        private static Dictionary<string, ItemInfo> ItemDicDefault;
+        private static ItemDic ItemDicDefault;
 
         private static LanguageInfo LanguageSelect;
 
@@ -123,11 +133,11 @@ namespace SimpleLanguageSupport
 
         private static void InitStaticFields()
         {
-            SupportList =new Dictionary<string,LanguageInfo>();
-            ItemListCollection = new Dictionary<string, Dictionary<string, ItemInfo>>();
+            SupportList = new LanguageSupportDic();
+            ItemDicCollection = new Dictionary<string, ItemDic>();
 
             LanguageDefault = null;
-            ItemDicDefault = new Dictionary<string, ItemInfo>();
+            ItemDicDefault = new ItemDic();
 
             LanguageSelect = null;
         }
@@ -159,7 +169,7 @@ namespace SimpleLanguageSupport
         {
             string abbreviation = ((XmlElement)settingsElement.GetElementsByTagName("Default")[0]).GetAttribute("language");
             if(!SupportList.TryGetValue(abbreviation, out LanguageDefault) || 
-                !ItemListCollection.TryGetValue(abbreviation,out ItemDicDefault))
+                !ItemDicCollection.TryGetValue(abbreviation,out ItemDicDefault))
             {
                 throw new LanguageSupportErrorException(
                     "Set Default Language Error: No such language in the language support list.");
@@ -173,7 +183,7 @@ namespace SimpleLanguageSupport
             foreach (XmlElement item_ItemList in detailsElement.GetElementsByTagName("ItemList"))
             {
                 string abbreviation = item_ItemList.GetAttribute("language");
-                Dictionary<string, ItemInfo> itemList = new Dictionary<string, ItemInfo>();
+                ItemDic itemList = new ItemDic();
 
                 foreach (XmlElement item_iteminfo in item_ItemList.GetElementsByTagName("Item"))
                 {
@@ -183,14 +193,14 @@ namespace SimpleLanguageSupport
                     itemList.Add(id, new ItemInfo(id, content));
                 }
 
-                ItemListCollection.Add(abbreviation, itemList);
+                ItemDicCollection.Add(abbreviation, itemList);
             }
 
         }
 
         private static void CheckAbbreviationList()
         {
-            ICollection<string> itemAbbList = ItemListCollection.Keys;
+            ICollection<string> itemAbbList = ItemDicCollection.Keys;
             List<string> langAbbList = new List<string>(SupportList.Keys);
 
             foreach(string item_itemAbb in itemAbbList)
@@ -225,9 +235,9 @@ namespace SimpleLanguageSupport
 
         public static Dictionary<string, ItemInfo> GetItemDictionary(string abbreviation)
         {
-            Dictionary<string, ItemInfo> itemDic = new Dictionary<string, ItemInfo>();
-            Dictionary<string, ItemInfo> itemDic2 = new Dictionary<string, ItemInfo>();
-            if(!ItemListCollection.TryGetValue(abbreviation, out itemDic2))
+            ItemDic itemDic = new ItemDic();
+            ItemDic itemDic2 = new ItemDic();
+            if(!ItemDicCollection.TryGetValue(abbreviation, out itemDic2))
             {
                 return null;
             }
