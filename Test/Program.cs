@@ -12,7 +12,8 @@ namespace Test
     {
         static void Main(string[] args)
         {
-            LanguageInfo ttt = ProgramLanguageHelp.GetDefaultLanguage();
+            LanguageSupportHelper helper = LanguageSupportHelper.GetHelper();
+            helper.SetLanguage("en-us");
         }
     }
 }

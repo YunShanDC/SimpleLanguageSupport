@@ -11,17 +11,20 @@ namespace SimpleLanguageSupport
 {
     public class LanguageSupportErrorException : Exception
     {
-        public LanguageSupportErrorException() : base()
-        { 
-
-        }
-
-        public LanguageSupportErrorException(string message) : base(message)
+        public LanguageSupportErrorException()
+            : base()
         {
 
         }
 
-        public LanguageSupportErrorException(string message, Exception innerException) : base(message,innerException)
+        public LanguageSupportErrorException(string message)
+            : base(message)
+        {
+
+        }
+
+        public LanguageSupportErrorException(string message, Exception innerException)
+            : base(message, innerException)
         {
 
         }
@@ -65,17 +68,10 @@ namespace SimpleLanguageSupport
             return (LanguageInfo)item.Clone();
         }
     }
-
-    public class LanguageSupportDic : Dictionary<string, LanguageInfo>
+    internal class LanguageDic : Dictionary<string, LanguageInfo>
     {
 
     }
-
-    public class ItemDic : Dictionary<string, ItemInfo>
-    {
-
-    }
-
     public class ItemInfo : ICloneable
     {
         public string ID { get; private set; }
@@ -104,45 +100,129 @@ namespace SimpleLanguageSupport
             return (ItemInfo)item.Clone();
         }
     }
-
-    public static class ProgramLanguageHelp
+    internal class ItemDic : Dictionary<string, ItemInfo>
     {
-        private static LanguageSupportDic SupportList;
-        private static Dictionary<string, ItemDic> ItemDicCollection;
 
-        private static LanguageInfo LanguageDefault;
-        private static ItemDic ItemDicDefault;
+    }
+    internal class ItemDicDic : Dictionary<string, ItemDic>
+    {
 
-        private static LanguageInfo LanguageSelect;
+    }
 
-        static ProgramLanguageHelp()
+    public class LanguageSupportHelper
+    {
+        #region static
+
+        private static LanguageSupportHelper helper;
+        private static object helperLocker;
+
+        static LanguageSupportHelper()
         {
-            InitStaticFields();
+            helper = null;
+            helperLocker = new object();
+        }
 
-            XmlElement xmlRootElement = LoadLanguageXml();
-            ReadSupportList(
-                (XmlElement)xmlRootElement.GetElementsByTagName("LanguageSupport")[0]);
-            ReadItemDetails(
-                (XmlElement)xmlRootElement.GetElementsByTagName("ItemDetails")[0]);
+        public static LanguageSupportHelper GetHelper()
+        {
+            if (helper == null)
+            {
+                lock (helperLocker)
+                {
+                    if (helper == null)
+                    {
+                        helper = new LanguageSupportHelper();
+                    }
+                }
+            }
+
+            return helper;
+        }
+
+        #endregion
+
+        #region Fields & Properties
+
+        private LanguageDic langSupportDic;
+        private ItemDicDic itemDicCollection;
+
+        private LanguageInfo langDefault;
+        private ItemDic itemDicDefault;
+
+        private LanguageInfo langSelected;
+        private ItemDic itemDicSelected;
+        private object selectLocker;
+
+        public LanguageInfo DefaultLanguageInfo
+        {
+            get
+            {
+                return langDefault;
+            }
+        }
+
+        public IReadOnlyDictionary<string, ItemInfo> DefaultItemDictionary
+        {
+            get
+            {
+                return itemDicDefault;
+            }
+        }
+
+        public LanguageInfo Language
+        {
+            get
+            {
+                return langSelected;
+            }
+        }
+
+        public IReadOnlyDictionary<string, ItemInfo> ItemDictionary
+        {
+            get
+            {
+                lock (selectLocker)
+                {
+                    return itemDicSelected;
+                }
+            }
+        }
+
+        #endregion
+        private LanguageSupportHelper()
+        {
+            InitField();
+
+            XmlElement rootElement = LoadLanguageXml();
+            AnalysisLanguageSupport((XmlElement)rootElement.GetElementsByTagName("LanguageSupport")[0]);
+            AnalysisItemDetails((XmlElement)rootElement.GetElementsByTagName("ItemDetails")[0]);
             CheckAbbreviationList();
+            AnalysisSettings((XmlElement)rootElement.GetElementsByTagName("Settings")[0]);
 
-            ReadSettings(
-                (XmlElement)xmlRootElement.GetElementsByTagName("Settings")[0]);
-            
+            InitSelected();
         }
 
-        private static void InitStaticFields()
+        private void InitField()
         {
-            SupportList = new LanguageSupportDic();
-            ItemDicCollection = new Dictionary<string, ItemDic>();
+            langSupportDic = new LanguageDic();
+            itemDicCollection = new ItemDicDic();
 
-            LanguageDefault = null;
-            ItemDicDefault = new ItemDic();
+            langDefault = null;
+            itemDicDefault = new ItemDic();
 
-            LanguageSelect = null;
+            langSelected = null;
+            itemDicSelected = new ItemDic();
+            selectLocker = new object();
         }
 
-        private static XmlElement LoadLanguageXml()
+        private void InitSelected()
+        {
+            langSelected = langDefault;
+            itemDicSelected = itemDicDefault;
+        }
+
+        #region Xml Part
+
+        private XmlElement LoadLanguageXml()
         {
             Assembly xmlFileAssembly = Assembly.GetExecutingAssembly();
             Stream xmlFileStream = xmlFileAssembly.GetManifestResourceStream(
@@ -154,31 +234,18 @@ namespace SimpleLanguageSupport
             return xmlDoc.DocumentElement;
         }
 
-        private static void ReadSupportList(XmlElement supportListElement)
+        private void AnalysisLanguageSupport(XmlElement langSupportElement)
         {
-            foreach(XmlElement item in supportListElement)
+            foreach (XmlElement item in langSupportElement)
             {
                 string abbreviation = item.GetAttribute("abbreviation");
                 string name = item.GetAttribute("name");
 
-                SupportList.Add(abbreviation, new LanguageInfo(abbreviation, name));
+                langSupportDic.Add(abbreviation, new LanguageInfo(abbreviation, name));
             }
         }
 
-        private static void ReadSettings(XmlElement settingsElement)
-        {
-            string abbreviation = ((XmlElement)settingsElement.GetElementsByTagName("Default")[0]).GetAttribute("language");
-            if(!SupportList.TryGetValue(abbreviation, out LanguageDefault) || 
-                !ItemDicCollection.TryGetValue(abbreviation,out ItemDicDefault))
-            {
-                throw new LanguageSupportErrorException(
-                    "Set Default Language Error: No such language in the language support list.");
-            }
-
-            LanguageSelect = LanguageDefault;
-        }
-
-        private static void ReadItemDetails(XmlElement detailsElement)
+        private void AnalysisItemDetails(XmlElement detailsElement)
         {
             foreach (XmlElement item_ItemList in detailsElement.GetElementsByTagName("ItemList"))
             {
@@ -193,21 +260,33 @@ namespace SimpleLanguageSupport
                     itemList.Add(id, new ItemInfo(id, content));
                 }
 
-                ItemDicCollection.Add(abbreviation, itemList);
+                itemDicCollection.Add(abbreviation, itemList);
             }
 
         }
 
-        private static void CheckAbbreviationList()
+        private void AnalysisSettings(XmlElement settingsElement)
         {
-            ICollection<string> itemAbbList = ItemDicCollection.Keys;
-            List<string> langAbbList = new List<string>(SupportList.Keys);
-
-            foreach(string item_itemAbb in itemAbbList)
+            string abbreviation = ((XmlElement)settingsElement.GetElementsByTagName("Default")[0]).GetAttribute("language");
+            if (!langSupportDic.TryGetValue(abbreviation, out langDefault) ||
+                !itemDicCollection.TryGetValue(abbreviation, out itemDicDefault))
             {
-                for(int i=0;i<langAbbList.Count;i++)
+                throw new LanguageSupportErrorException(
+                    "Set Default Language Error: No such language in the language support list.");
+            }
+
+        }
+
+        private void CheckAbbreviationList()
+        {
+            ICollection<string> itemAbbList = itemDicCollection.Keys;
+            List<string> langAbbList = new List<string>(langSupportDic.Keys);
+
+            foreach (string item_itemAbb in itemAbbList)
+            {
+                for (int i = 0; i < langAbbList.Count; i++)
                 {
-                    if(item_itemAbb==langAbbList[i])
+                    if (item_itemAbb == langAbbList[i])
                     {
                         langAbbList.RemoveAt(i);
                         break;
@@ -215,66 +294,33 @@ namespace SimpleLanguageSupport
                 }
             }
 
-            if(langAbbList.Count!=0)
+            if (langAbbList.Count != 0)
             {
                 throw new LanguageSupportErrorException(
                     "Match Error: There are at least one 'Language' which has no 'ItemList' to match.");
             }
         }
 
-        public static List<LanguageInfo> GetSupportLanguageList()
+        #endregion
+
+        public bool SetLanguage(string abbreviation)
         {
-            List<LanguageInfo> langList = new List<LanguageInfo>();
-            foreach(LanguageInfo item in SupportList.Values)
+            lock (selectLocker)
             {
-                langList.Add(LanguageInfo.Copy(item));
+                LanguageInfo temp = langSelected;
+
+                if (langSupportDic.TryGetValue(abbreviation, out langSelected))
+                {
+                    itemDicSelected = itemDicCollection[abbreviation];
+                    return true;
+                }
+                else
+                {
+                    langSelected = temp;
+                    return false;
+                }
             }
 
-            return langList;
-        }
-
-        public static Dictionary<string, ItemInfo> GetItemDictionary(string abbreviation)
-        {
-            ItemDic itemDic = new ItemDic();
-            ItemDic itemDic2 = new ItemDic();
-            if(!ItemDicCollection.TryGetValue(abbreviation, out itemDic2))
-            {
-                return null;
-            }
-
-            foreach(ItemInfo item in itemDic2.Values)
-            {
-                itemDic.Add(item.ID, item);
-            }
-
-            return itemDic;
-        }
-
-        public static LanguageInfo GetDefaultLanguage()
-        {
-            return LanguageDefault;
-        }
-
-        public static Dictionary<string, ItemInfo> GetDefaultItemDictionary()
-        {
-            return GetItemDictionary(LanguageDefault.Abbreviation);
-        }
-
-        public static bool SetLanguage(string abbreviation)
-        {
-            if(SupportList.TryGetValue(abbreviation, out LanguageSelect))
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-
-        public static LanguageInfo GetLanguage()
-        {
-            return LanguageInfo.Copy(LanguageSelect);
         }
     }
 }
